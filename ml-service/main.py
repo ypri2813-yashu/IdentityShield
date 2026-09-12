@@ -187,14 +187,28 @@ async def screen_document(file: UploadFile = File(...)):
         ocr_confidence=ocr_result.get("ocrConfidence", 0.0)
     )
 
+    suspicious_prob = round(raw_prob, 4)
+    normal_prob = round(1.0 - raw_prob, 4)
+
     return {
         "cnnPrediction": cnn_prediction,
         "cnnConfidence": cnn_confidence,
+        "rawProbability": suspicious_prob,
+        "suspiciousProbability": suspicious_prob,
+        "normalProbability": normal_prob,
         "ocrConfidence": ocr_result.get("ocrConfidence", 0.0),
         "anomalyScore": image_signals.get("anomalyScore", 0.0),
         "riskScore": risk_score,
         "riskLevel": risk_level,
         "message": recommendation_message,
+        "probabilityScores": {
+            "suspiciousProbability": suspicious_prob,
+            "normalProbability": normal_prob,
+            "anomalyProbability": round(image_signals.get("anomalyScore", 0.0), 4),
+            "ocrConfidenceProbability": round(ocr_result.get("ocrConfidence", 0.0), 4),
+            "overallRiskProbability": round(risk_score / 100.0, 4),
+            "rawSigmoidScore": suspicious_prob
+        },
         "extractedText": ocr_result.get("ocrText", ""),
         "extractedFields": ocr_result.get("extractedFields", {}),
         "imageSignals": {

@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS screening_results (
     document_id BIGINT NOT NULL,
     cnn_prediction VARCHAR(32) NOT NULL, -- Normal, Suspicious
     cnn_confidence DECIMAL(5, 4) NOT NULL, -- e.g., 0.9125 (0.0 to 1.0)
+    raw_probability DECIMAL(5, 4) DEFAULT 0.5000, -- Raw Sigmoid Probability
+    suspicious_probability DECIMAL(5, 4) DEFAULT 0.5000, -- P(Suspicious)
+    normal_probability DECIMAL(5, 4) DEFAULT 0.5000, -- P(Normal)
     ocr_confidence DECIMAL(5, 4) DEFAULT 0.0000,
     anomaly_score DECIMAL(5, 4) DEFAULT 0.0000,
     risk_score INT NOT NULL, -- 0 to 100

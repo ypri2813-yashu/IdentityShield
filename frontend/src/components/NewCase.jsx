@@ -295,20 +295,32 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
 
             {/* Document Selector Pills if multiple */}
             {screeningResults.length > 1 && (
-              <div className="flex space-x-2">
-                {screeningResults.map((r, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveResultDocId(r.documentId || r.id)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg border transition ${
-                      (r.documentId || r.id) === activeResultDocId
-                        ? 'bg-rose-500/20 border-rose-500 text-rose-300'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Doc #{i + 1} ({r.docType || 'DOC'})
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-2">
+                {screeningResults.map((r, i) => {
+                  const pSusp = r.suspiciousProbability !== undefined
+                    ? Number(r.suspiciousProbability)
+                    : (r.cnnPrediction === 'Suspicious' ? Number(r.cnnConfidence || 0.75) : Number((1 - (r.cnnConfidence || 0.5)).toFixed(4)));
+                  const isSusp = (r.cnnPrediction === 'Suspicious') || pSusp >= 0.5;
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setActiveResultDocId(r.documentId || r.id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition flex items-center space-x-2 ${
+                        (r.documentId || r.id) === activeResultDocId
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300 shadow-md shadow-rose-950/30'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span>Doc #{i + 1} ({r.docType || 'DOC'})</span>
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                        isSusp ? 'bg-rose-950 text-rose-400 border border-rose-800/60' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                      }`}>
+                        P(Susp): {(pSusp * 100).toFixed(0)}%
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

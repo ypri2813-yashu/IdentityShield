@@ -148,6 +148,17 @@ public class DocumentService {
         result.setDocument(document);
         result.setCnnPrediction(mlResponse.getCnnPrediction() != null ? mlResponse.getCnnPrediction() : "Normal");
         result.setCnnConfidence(BigDecimal.valueOf(mlResponse.getCnnConfidence() != null ? mlResponse.getCnnConfidence() : 0.5000));
+        
+        Double rawProb = mlResponse.getRawProbability() != null ? mlResponse.getRawProbability() :
+                (mlResponse.getSuspiciousProbability() != null ? mlResponse.getSuspiciousProbability() :
+                ("Suspicious".equalsIgnoreCase(mlResponse.getCnnPrediction()) ? mlResponse.getCnnConfidence() : 1.0 - (mlResponse.getCnnConfidence() != null ? mlResponse.getCnnConfidence() : 0.5)));
+        Double suspProb = mlResponse.getSuspiciousProbability() != null ? mlResponse.getSuspiciousProbability() : rawProb;
+        Double normProb = mlResponse.getNormalProbability() != null ? mlResponse.getNormalProbability() : (1.0 - suspProb);
+        
+        result.setRawProbability(BigDecimal.valueOf(rawProb != null ? rawProb : 0.5000));
+        result.setSuspiciousProbability(BigDecimal.valueOf(suspProb != null ? suspProb : 0.5000));
+        result.setNormalProbability(BigDecimal.valueOf(normProb != null ? normProb : 0.5000));
+
         result.setOcrConfidence(BigDecimal.valueOf(mlResponse.getOcrConfidence() != null ? mlResponse.getOcrConfidence() : 0.0000));
         result.setAnomalyScore(BigDecimal.valueOf(mlResponse.getAnomalyScore() != null ? mlResponse.getAnomalyScore() : 0.0000));
         result.setRiskScore(finalRiskScore);

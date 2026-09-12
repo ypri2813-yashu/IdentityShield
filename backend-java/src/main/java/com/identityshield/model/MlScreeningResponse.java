@@ -13,6 +13,10 @@ public class MlScreeningResponse {
 
     private String cnnPrediction;
     private Double cnnConfidence;
+    private Double rawProbability;
+    private Double suspiciousProbability;
+    private Double normalProbability;
+    private Map<String, Object> probabilityScores;
     private Double ocrConfidence;
     private Double anomalyScore;
     private Integer riskScore;
@@ -40,6 +44,38 @@ public class MlScreeningResponse {
 
     public void setCnnConfidence(Double cnnConfidence) {
         this.cnnConfidence = cnnConfidence;
+    }
+
+    public Double getRawProbability() {
+        return rawProbability;
+    }
+
+    public void setRawProbability(Double rawProbability) {
+        this.rawProbability = rawProbability;
+    }
+
+    public Double getSuspiciousProbability() {
+        return suspiciousProbability;
+    }
+
+    public void setSuspiciousProbability(Double suspiciousProbability) {
+        this.suspiciousProbability = suspiciousProbability;
+    }
+
+    public Double getNormalProbability() {
+        return normalProbability;
+    }
+
+    public void setNormalProbability(Double normalProbability) {
+        this.normalProbability = normalProbability;
+    }
+
+    public Map<String, Object> getProbabilityScores() {
+        return probabilityScores;
+    }
+
+    public void setProbabilityScores(Map<String, Object> probabilityScores) {
+        this.probabilityScores = probabilityScores;
     }
 
     public Double getOcrConfidence() {

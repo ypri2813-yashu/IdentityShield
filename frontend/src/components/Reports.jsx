@@ -160,7 +160,8 @@ export default function Reports() {
               <tr>
                 <th className="py-3 px-3">Result ID</th>
                 <th className="py-3 px-3">CNN Prediction</th>
-                <th className="py-3 px-3">CNN Conf</th>
+                <th className="py-3 px-3">P(Suspicious)</th>
+                <th className="py-3 px-3">P(Normal)</th>
                 <th className="py-3 px-3">OCR Readability</th>
                 <th className="py-3 px-3">Risk Level</th>
                 <th className="py-3 px-3">Score</th>
@@ -173,6 +174,13 @@ export default function Reports() {
                   const isHigh = r.riskLevel === 'HIGH';
                   const isMed = r.riskLevel === 'MEDIUM';
 
+                  const pSusp = r.suspiciousProbability !== undefined
+                    ? Number(r.suspiciousProbability)
+                    : (r.cnnPrediction === 'Suspicious' ? Number(r.cnnConfidence || 0.75) : Number((1 - (r.cnnConfidence || 0.5)).toFixed(4)));
+                  const pNorm = r.normalProbability !== undefined
+                    ? Number(r.normalProbability)
+                    : Number((1 - pSusp).toFixed(4));
+
                   return (
                     <tr key={r.id} className="hover:bg-slate-800/30 transition-colors">
                       <td className="py-3 px-3 font-mono text-slate-400">#{r.id}</td>
@@ -181,8 +189,11 @@ export default function Reports() {
                           {r.cnnPrediction || 'Normal'}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-300">
-                        {r.cnnConfidence ? `${Math.round(r.cnnConfidence * 100)}%` : '—'}
+                      <td className="py-3 px-3 font-mono text-rose-400 font-semibold">
+                        {(pSusp * 100).toFixed(1)}% <span className="text-[10px] text-slate-400 font-normal">({pSusp.toFixed(3)})</span>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-emerald-400 font-semibold">
+                        {(pNorm * 100).toFixed(1)}% <span className="text-[10px] text-slate-400 font-normal">({pNorm.toFixed(3)})</span>
                       </td>
                       <td className="py-3 px-3 font-mono text-slate-300">
                         {r.ocrConfidence ? `${Math.round(r.ocrConfidence * 100)}%` : '—'}
@@ -209,7 +220,7 @@ export default function Reports() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     No individual screening results recorded yet.
                   </td>
                 </tr>

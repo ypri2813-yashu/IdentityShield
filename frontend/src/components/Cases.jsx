@@ -205,9 +205,29 @@ export default function Cases({ selectedCaseId, setSelectedCaseId }) {
                     </div>
 
                     <p className="text-xs font-semibold text-white mt-2 truncate">{doc.fileName}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {latestResult ? `CNN: ${latestResult.cnnPrediction}` : 'Awaiting screening'}
-                    </p>
+                    {latestResult ? (
+                      <div className="mt-1.5 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">CNN Prediction:</span>
+                          <span className={latestResult.cnnPrediction === 'Suspicious' ? 'text-rose-400 font-semibold' : 'text-emerald-400 font-semibold'}>
+                            {latestResult.cnnPrediction}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-slate-400">P(Suspicious):</span>
+                          <span className="text-rose-400 font-bold">
+                            {(() => {
+                              const pSusp = latestResult.suspiciousProbability !== undefined
+                                ? Number(latestResult.suspiciousProbability)
+                                : (latestResult.cnnPrediction === 'Suspicious' ? Number(latestResult.cnnConfidence || 0.75) : Number((1 - (latestResult.cnnConfidence || 0.5)).toFixed(4)));
+                              return `${(pSusp * 100).toFixed(1)}%`;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-1">Awaiting screening</p>
+                    )}
                   </div>
                 );
               })}

@@ -33,6 +33,15 @@ public class ScreeningResult {
     @Column(name = "cnn_confidence", nullable = false, precision = 5, scale = 4)
     private BigDecimal cnnConfidence; // e.g. 0.9100
 
+    @Column(name = "raw_probability", precision = 5, scale = 4)
+    private BigDecimal rawProbability; // e.g. 0.9124
+
+    @Column(name = "suspicious_probability", precision = 5, scale = 4)
+    private BigDecimal suspiciousProbability; // e.g. 0.9124
+
+    @Column(name = "normal_probability", precision = 5, scale = 4)
+    private BigDecimal normalProbability; // e.g. 0.0876
+
     @Column(name = "ocr_confidence", precision = 5, scale = 4)
     private BigDecimal ocrConfidence; // e.g. 0.8800
 
@@ -104,6 +113,30 @@ public class ScreeningResult {
 
     public void setCnnConfidence(BigDecimal cnnConfidence) {
         this.cnnConfidence = cnnConfidence;
+    }
+
+    public BigDecimal getRawProbability() {
+        return rawProbability;
+    }
+
+    public void setRawProbability(BigDecimal rawProbability) {
+        this.rawProbability = rawProbability;
+    }
+
+    public BigDecimal getSuspiciousProbability() {
+        return suspiciousProbability;
+    }
+
+    public void setSuspiciousProbability(BigDecimal suspiciousProbability) {
+        this.suspiciousProbability = suspiciousProbability;
+    }
+
+    public BigDecimal getNormalProbability() {
+        return normalProbability;
+    }
+
+    public void setNormalProbability(BigDecimal normalProbability) {
+        this.normalProbability = normalProbability;
     }
 
     public BigDecimal getOcrConfidence() {

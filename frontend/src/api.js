@@ -33,6 +33,17 @@ const initialMockCases = [
             id: 1,
             cnnPrediction: 'Suspicious',
             cnnConfidence: 0.91,
+            rawProbability: 0.9124,
+            suspiciousProbability: 0.9124,
+            normalProbability: 0.0876,
+            probabilityScores: {
+              suspiciousProbability: 0.9124,
+              normalProbability: 0.0876,
+              anomalyProbability: 0.4200,
+              ocrConfidenceProbability: 0.8800,
+              overallRiskProbability: 0.7800,
+              rawSigmoidScore: 0.9124
+            },
             ocrConfidence: 0.88,
             anomalyScore: 0.42,
             riskScore: 78,
@@ -66,6 +77,17 @@ const initialMockCases = [
             id: 2,
             cnnPrediction: 'Normal',
             cnnConfidence: 0.78,
+            rawProbability: 0.2200,
+            suspiciousProbability: 0.2200,
+            normalProbability: 0.7800,
+            probabilityScores: {
+              suspiciousProbability: 0.2200,
+              normalProbability: 0.7800,
+              anomalyProbability: 0.1500,
+              ocrConfidenceProbability: 0.7900,
+              overallRiskProbability: 0.3500,
+              rawSigmoidScore: 0.2200
+            },
             ocrConfidence: 0.79,
             anomalyScore: 0.15,
             riskScore: 35,
@@ -111,6 +133,17 @@ const initialMockCases = [
             id: 3,
             cnnPrediction: 'Normal',
             cnnConfidence: 0.88,
+            rawProbability: 0.1200,
+            suspiciousProbability: 0.1200,
+            normalProbability: 0.8800,
+            probabilityScores: {
+              suspiciousProbability: 0.1200,
+              normalProbability: 0.8800,
+              anomalyProbability: 0.0800,
+              ocrConfidenceProbability: 0.9400,
+              overallRiskProbability: 0.1800,
+              rawSigmoidScore: 0.1200
+            },
             ocrConfidence: 0.94,
             anomalyScore: 0.08,
             riskScore: 18,
@@ -157,6 +190,17 @@ const initialMockCases = [
             id: 4,
             cnnPrediction: 'Normal',
             cnnConfidence: 0.56,
+            rawProbability: 0.4400,
+            suspiciousProbability: 0.4400,
+            normalProbability: 0.5600,
+            probabilityScores: {
+              suspiciousProbability: 0.4400,
+              normalProbability: 0.5600,
+              anomalyProbability: 0.3100,
+              ocrConfidenceProbability: 0.7100,
+              overallRiskProbability: 0.5200,
+              rawSigmoidScore: 0.4400
+            },
             ocrConfidence: 0.71,
             anomalyScore: 0.31,
             riskScore: 52,
@@ -433,11 +477,26 @@ export const api = {
         message = 'Medium Risk — Review Recommended';
       }
 
+      const rawProb = isSuspicious ? cnnConfidence : +(1.0 - cnnConfidence).toFixed(4);
+      const suspiciousProbability = rawProb;
+      const normalProbability = +(1.0 - rawProb).toFixed(4);
+
       const result = {
         id: Date.now(),
         documentId: documentId,
         cnnPrediction,
         cnnConfidence,
+        rawProbability: suspiciousProbability,
+        suspiciousProbability,
+        normalProbability,
+        probabilityScores: {
+          suspiciousProbability,
+          normalProbability,
+          anomalyProbability: anomalyScore,
+          ocrConfidenceProbability: ocrConfidence,
+          overallRiskProbability: +(riskScore / 100).toFixed(4),
+          rawSigmoidScore: suspiciousProbability
+        },
         ocrConfidence,
         anomalyScore,
         riskScore,
