@@ -28,15 +28,49 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
   const [screeningResults, setScreeningResults] = useState([]);
   const [activeResultDocId, setActiveResultDocId] = useState(null);
 
-  // Quick preset loader to let user test immediately without looking for files on their computer
+  // Quick preset loader to test authentic vs forged Indian and general documents
   function loadDemoScenario(type) {
-    if (type === 'mismatch') {
+    if (type === 'aadhaar_fake') {
+      setCaseName('UIDAI Fraud Audit - Suspected Forged Aadhaar');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[FORGED AADHAAR WITH BAD VERHOEFF DIGIT]'], 'fake_aadhaar_card_tampered.jpg', { type: 'image/jpeg' });
+      file.documentCondition = 'FAKE';
+      setStagedFiles([{ file, documentType: 'INDIAN_AADHAAR', id: 101 }]);
+    } else if (type === 'aadhaar_valid') {
+      setCaseName('Citizen KYC Verification - Valid Aadhaar');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[GENUINE UIDAI AADHAAR WITH VALID VERHOEFF CHECKSUM]'], 'rahul_sharma_aadhaar.jpg', { type: 'image/jpeg' });
+      file.documentCondition = 'AUTO';
+      setStagedFiles([{ file, documentType: 'INDIAN_AADHAAR', id: 102 }]);
+    } else if (type === 'pan_fake') {
+      setCaseName('Tax ID Forensic Audit - Suspected Forged PAN');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[FORGED PAN WITH ILLEGAL ENTITY CODE]'], 'fake_pan_card_altered.jpg', { type: 'image/jpeg' });
+      file.documentCondition = 'FAKE';
+      setStagedFiles([{ file, documentType: 'INDIAN_PAN', id: 103 }]);
+    } else if (type === 'pan_valid') {
+      setCaseName('Merchant Onboarding - Verified PAN');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[AUTHENTIC INCOME TAX PAN CARD]'], 'rahul_sharma_pan.jpg', { type: 'image/jpeg' });
+      file.documentCondition = 'AUTO';
+      setStagedFiles([{ file, documentType: 'INDIAN_PAN', id: 104 }]);
+    } else if (type === 'dl_fake') {
+      setCaseName('Driver Background Check - Altered DL');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[ALTERED DRIVING LICENCE WITH FAKE STATE RTO]'], 'fake_indian_driving_licence.jpg', { type: 'image/jpeg' });
+      file.documentCondition = 'FAKE';
+      setStagedFiles([{ file, documentType: 'INDIAN_DRIVING_LICENCE', id: 105 }]);
+    } else if (type === 'utility_fake') {
+      setCaseName('Address Proof Verification - Spliced Utility Bill');
+      setApplicantName('Rahul Sharma');
+      const file = new File(['[TAMPERED ELECTRICITY BILL WITH SPLICED ADDRESS]'], 'fake_utility_bill_manipulated.png', { type: 'image/png' });
+      file.documentCondition = 'FAKE';
+      setStagedFiles([{ file, documentType: 'UTILITY_BILL', id: 106 }]);
+    } else if (type === 'mismatch') {
       setCaseName('Cross-Doc Inconsistency Case - Jane Smith');
       setApplicantName('Jane E. Smith');
-      // Create synthetic sample files
       const file1 = new File(['[SAMPLE PASSPORT SCAN DATA]'], 'jane_smith_passport.jpg', { type: 'image/jpeg' });
       const file2 = new File(['[SAMPLE UTILITY BILL DATA]'], 'jane_smith_electric_bill.png', { type: 'image/png' });
-
       setStagedFiles([
         { file: file1, documentType: 'PASSPORT', id: 1 },
         { file: file2, documentType: 'UTILITY_BILL', id: 2 }
@@ -130,21 +164,56 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
           </p>
         </div>
 
-        {/* Demo Preset Buttons */}
-        <div className="flex items-center space-x-2">
+        {/* Quick Test Presets */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] uppercase font-bold text-slate-400 mr-1">Quick Scenarios:</span>
           <button
             type="button"
-            onClick={() => loadDemoScenario('clear')}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:border-slate-700 transition"
+            onClick={() => loadDemoScenario('aadhaar_valid')}
+            className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-950/40 transition"
+            title="Valid Indian Aadhaar with verified UIDAI Verhoeff Checksum (Expect: Normal, Low Risk)"
           >
-            Demo: Standard ID
+            🇮🇳 Valid Aadhaar
           </button>
           <button
             type="button"
-            onClick={() => loadDemoScenario('mismatch')}
-            className="rounded-xl border border-rose-900/40 bg-rose-950/20 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-950/40 transition"
+            onClick={() => loadDemoScenario('aadhaar_fake')}
+            className="rounded-xl border border-rose-800/60 bg-rose-950/30 px-2.5 py-1 text-xs font-medium text-rose-400 hover:bg-rose-950/50 transition font-semibold"
+            title="Forged Indian Aadhaar with invalid Verhoeff check digit & spliced fonts (Expect: Suspicious, High Risk)"
           >
-            Demo: Inconsistency Case
+            🚨 Fake Aadhaar
+          </button>
+          <button
+            type="button"
+            onClick={() => loadDemoScenario('pan_valid')}
+            className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-950/40 transition"
+            title="Valid Indian PAN Card with valid tax structure (Expect: Normal, Low Risk)"
+          >
+            🇮🇳 Valid PAN
+          </button>
+          <button
+            type="button"
+            onClick={() => loadDemoScenario('pan_fake')}
+            className="rounded-xl border border-rose-800/60 bg-rose-950/30 px-2.5 py-1 text-xs font-medium text-rose-400 hover:bg-rose-950/50 transition font-semibold"
+            title="Fake Indian PAN Card with surname demographic mismatch and invalid entity char (Expect: Suspicious, High Risk)"
+          >
+            🚨 Fake PAN
+          </button>
+          <button
+            type="button"
+            onClick={() => loadDemoScenario('dl_fake')}
+            className="rounded-xl border border-rose-800/60 bg-rose-950/30 px-2.5 py-1 text-xs font-medium text-rose-400 hover:bg-rose-950/50 transition"
+            title="Altered Indian Driving Licence with fake state RTO and underage DOB (Expect: Suspicious, High Risk)"
+          >
+            🚨 Altered DL
+          </button>
+          <button
+            type="button"
+            onClick={() => loadDemoScenario('utility_fake')}
+            className="rounded-xl border border-amber-800/60 bg-amber-950/30 px-2.5 py-1 text-xs font-medium text-amber-400 hover:bg-amber-950/50 transition"
+            title="Tampered Utility Bill with Photoshop address splicing and expired date (Expect: Suspicious, High Risk)"
+          >
+            🚨 Forged Bill
           </button>
         </div>
       </div>

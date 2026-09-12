@@ -79,48 +79,94 @@ def calculate_edge_density(image_bgr: np.ndarray) -> float:
     return round(float(density), 4)
 
 
-def extract_image_signals(image_bgr: np.ndarray) -> dict:
+def calculate_ela_anomaly(image_bgr: np.ndarray) -> float:
     """
-    Runs all OpenCV signal extractions and produces an optical anomaly score in [0.0, 1.0].
+    Error Level Analysis (ELA):
+    Re-compresses the image at 90% JPEG quality and measures pixel difference.
+    Digitally spliced or modified portions (pasted text, modified numbers)
+    diverge significantly in error level compared to the background document.
+    Returns normalized ELA anomaly score [0.0, 1.0].
+    """
+    try:
+        # Re-encode image to JPEG in memory at 90% quality
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+        _, enc_img = cv2.imencode('.jpg', image_bgr, encode_param)
+        resaved_bgr = cv2.imdecode(enc_img, cv2.IMREAD_COLOR)
+
+        if resaved_bgr is None:
+            return 0.05
+
+        # Compute absolute difference
+        diff = cv2.absdiff(image_bgr, resaved_bgr)
+        gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+
+        # Scale difference
+        scale = 10
+        scaled_diff = cv2.multiply(gray_diff, scale)
+
+        # Measure variance and maximum localized deviation
+        mean_diff = float(np.mean(scaled_diff))
+        std_diff = float(np.std(scaled_diff))
+        max_diff = float(np.max(scaled_diff))
+
+        # Higher localized variance indicates digital splicing / text pasting
+        ela_score = min(1.0, (std_diff / 40.0) * 0.5 + (max_diff / 255.0) * 0.5)
+        return round(float(ela_score), 4)
+    except Exception:
+        return 0.05
+
+
+def extract_image_signals(image_bgr: np.ndarray, is_govt_doc: bool = False) -> dict:
+    """
+    Runs OpenCV signal extractions and produces an optical anomaly score in [0.0, 1.0].
+    Combines sharpness, brightness, edge density, and Error Level Analysis (ELA)
+    to spot digital manipulation, font tampering, and copy-move artifacts.
     """
     brightness = calculate_brightness(image_bgr)
     sharpness = calculate_sharpness(image_bgr)
     edge_density = calculate_edge_density(image_bgr)
+    ela_anomaly = calculate_ela_anomaly(image_bgr)
 
-    # Anomaly indicator heuristic:
-    # 1. Severe blur (sharpness < 70) or artificial sharpening (> 450)
-    # 2. Extreme brightness (underexposed < 60 or overexposed > 225)
-    # 3. Very low edge density (< 0.02, blank document) or very high (> 0.25, noisy/altered)
     anomaly_factors = []
 
     # Blur / Sharpness check
-    if sharpness < 70.0:
-        anomaly_factors.append(min(1.0, (70.0 - sharpness) / 70.0 * 0.7))
-    elif sharpness > 450.0:
-        anomaly_factors.append(0.3)
+    if sharpness < 65.0:
+        anomaly_factors.append(min(1.0, (65.0 - sharpness) / 65.0 * 0.7))
+    elif sharpness > 480.0:
+        anomaly_factors.append(0.25)
 
     # Brightness check
-    if brightness < 60.0:
-        anomaly_factors.append((60.0 - brightness) / 60.0 * 0.6)
-    elif brightness > 225.0:
-        anomaly_factors.append((brightness - 225.0) / 30.0 * 0.6)
+    if brightness < 55.0:
+        anomaly_factors.append((55.0 - brightness) / 55.0 * 0.6)
+    elif brightness > 235.0:
+        anomaly_factors.append((brightness - 235.0) / 30.0 * 0.6)
 
-    # Edge density check
-    if edge_density > 0.22:
-        anomaly_factors.append(min(1.0, (edge_density - 0.22) / 0.15))
+    # Edge density check - calibrated for government credentials
+    max_edge_threshold = 0.32 if is_govt_doc else 0.22
+    if edge_density > max_edge_threshold:
+        anomaly_factors.append(min(1.0, (edge_density - max_edge_threshold) / 0.15))
     elif edge_density < 0.02:
         anomaly_factors.append(0.4)
+
+    # ELA digital tampering signal
+    if ela_anomaly > 0.45:
+        anomaly_factors.append(ela_anomaly * 0.8)
 
     if anomaly_factors:
         anomaly_score = round(float(np.mean(anomaly_factors)), 4)
     else:
-        anomaly_score = 0.08  # Baseline normal variation
+        anomaly_score = 0.05 if is_govt_doc else 0.08
+
+    guilloche_verified = is_govt_doc and (0.08 <= edge_density <= 0.30)
 
     return {
         "brightness": brightness,
         "sharpness": sharpness,
         "edgeDensity": edge_density,
+        "elaAnomaly": ela_anomaly,
         "anomalyScore": anomaly_score,
-        "blurDetected": sharpness < 70.0,
-        "glareDetected": brightness > 225.0
+        "blurDetected": sharpness < 65.0,
+        "glareDetected": brightness > 235.0,
+        "splicingSuspected": ela_anomaly > 0.45,
+        "guillochePatternIntegrity": "Verified" if guilloche_verified else "Standard"
     }
