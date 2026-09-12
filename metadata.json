@@ -1,0 +1,7 @@
+{
+  "name": "IdentityShield — AI Document Screening System",
+  "description": "AI-Based Identity & Document Screening System featuring CNN visual analysis, OpenCV image metrics, Tesseract OCR, multi-document case cross-checking, and risk scoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

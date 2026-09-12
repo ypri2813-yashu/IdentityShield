@@ -1,0 +1,2 @@
+# Model weights directory
+# Run `python training/train_cnn.py` to produce `document_cnn.keras`
