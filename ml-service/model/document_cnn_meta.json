@@ -1,0 +1,17 @@
+{
+  "framework": "PyTorch",
+  "epochs": 12,
+  "validation_accuracy": 0.7,
+  "validation_loss": 0.5341,
+  "precision": 1.0,
+  "recall": 0.4,
+  "f1_score": 0.5714,
+  "dataset_info": {
+    "training_samples": 160,
+    "validation_samples": 40,
+    "classes": [
+      "Normal (Authentic)",
+      "Suspicious (Forged)"
+    ]
+  }
+}

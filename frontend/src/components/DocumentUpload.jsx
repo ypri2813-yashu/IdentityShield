@@ -23,6 +23,14 @@ export default function DocumentUpload({ onFileSelected, documentType, setDocume
   ];
 
   const [documentCondition, setDocumentCondition] = useState('AUTO');
+  const [currentFile, setCurrentFile] = useState(null);
+
+  function updateCondition(newCond) {
+    setDocumentCondition(newCond);
+    if (currentFile) {
+      currentFile.documentCondition = newCond;
+    }
+  }
 
   function handleFile(file) {
     if (!file) return;
@@ -42,7 +50,8 @@ export default function DocumentUpload({ onFileSelected, documentType, setDocume
     setPreviewUrl(objectUrl);
     // Attach document condition flag to file object
     file.documentCondition = documentCondition;
-    onFileSelected(file);
+    setCurrentFile(file);
+    onFileSelected(file, documentCondition, documentType);
   }
 
   function handleDrop(e) {
@@ -58,6 +67,7 @@ export default function DocumentUpload({ onFileSelected, documentType, setDocume
     e.stopPropagation();
     setPreviewUrl(null);
     setSelectedFileName(null);
+    setCurrentFile(null);
     if (inputRef.current) inputRef.current.value = '';
     onFileSelected(null);
   }
@@ -84,33 +94,60 @@ export default function DocumentUpload({ onFileSelected, documentType, setDocume
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-            Integrity Evaluation Mode
+          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <span>Integrity Evaluation Mode</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              documentCondition === 'FAKE'
+                ? 'bg-rose-950/80 text-rose-300 border border-rose-800/80'
+                : documentCondition === 'VALID'
+                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/80'
+                : 'bg-blue-950/80 text-blue-300 border border-blue-800/80'
+            }`}>
+              {documentCondition === 'FAKE' ? '🚨 Testing Fraud Engine (Fake)' : documentCondition === 'VALID' ? '🇮🇳 Genuine Credential' : '🔍 Auto-Forensic'}
+            </span>
           </label>
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
             <button
               type="button"
-              onClick={() => setDocumentCondition('AUTO')}
-              className={`px-2.5 py-2 text-xs font-semibold rounded-lg transition ${
-                documentCondition === 'AUTO'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+              onClick={() => updateCondition('FAKE')}
+              className={`px-2 py-2 text-[11px] font-bold rounded-lg transition text-center ${
+                documentCondition === 'FAKE'
+                  ? 'bg-rose-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-rose-300 hover:bg-slate-800/60'
               }`}
             >
-              Auto-Detect Authenticity
+              🚨 Suspected Fake
             </button>
             <button
               type="button"
-              onClick={() => setDocumentCondition('FAKE')}
-              className={`px-2.5 py-2 text-xs font-semibold rounded-lg transition ${
-                documentCondition === 'FAKE'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-rose-300'
+              onClick={() => updateCondition('VALID')}
+              className={`px-2 py-2 text-[11px] font-bold rounded-lg transition text-center ${
+                documentCondition === 'VALID'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60'
               }`}
             >
-              Suspected Fake / Tampered
+              🇮🇳 Authentic / Valid
+            </button>
+            <button
+              type="button"
+              onClick={() => updateCondition('AUTO')}
+              className={`px-2 py-2 text-[11px] font-bold rounded-lg transition text-center ${
+                documentCondition === 'AUTO'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-blue-300 hover:bg-slate-800/60'
+              }`}
+            >
+              🔍 Auto-Detect
             </button>
           </div>
+          <p className="text-[11px] text-slate-400 mt-1.5 px-0.5">
+            {documentCondition === 'FAKE'
+              ? '🚨 Tests fraud detection: Verhoeff checksum failure, spliced font baselines, demographic mismatch, CNN Suspicious prediction.'
+              : documentCondition === 'VALID'
+              ? '🇮🇳 Tests genuine verification: Valid mathematical checksums, Guilloché anti-counterfeit lines, matched demographics.'
+              : '🔍 Auto-detects based on document signatures, filename cues, and optical forensic inspection.'}
+          </p>
         </div>
       </div>
 

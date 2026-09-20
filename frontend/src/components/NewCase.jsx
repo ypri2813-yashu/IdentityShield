@@ -16,6 +16,29 @@ import {
 import DocumentUpload from './DocumentUpload';
 import ScreeningResult from './ScreeningResult';
 import { api } from '../api';
+import { generateSyntheticDocImage } from '../utils/imageForensics';
+
+function makeSyntheticFile(docType, applicantName, idNumber, isFake, fileName) {
+  try {
+    const dataUrl = generateSyntheticDocImage({ docType, applicantName, idNumber, isFake });
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const file = new File([u8arr], fileName, { type: mime });
+    file.documentCondition = isFake ? 'FAKE' : 'VALID';
+    file._previewUrl = dataUrl;
+    return file;
+  } catch (err) {
+    const file = new File(['[SAMPLE SCAN]'], fileName, { type: 'image/jpeg' });
+    file.documentCondition = isFake ? 'FAKE' : 'VALID';
+    return file;
+  }
+}
 
 export default function NewCase({ setActiveTab, setSelectedCaseId }) {
   const [caseName, setCaseName] = useState('');
@@ -33,66 +56,112 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
     if (type === 'aadhaar_fake') {
       setCaseName('UIDAI Fraud Audit - Suspected Forged Aadhaar');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[FORGED AADHAAR WITH BAD VERHOEFF DIGIT]'], 'fake_aadhaar_card_tampered.jpg', { type: 'image/jpeg' });
-      file.documentCondition = 'FAKE';
-      setStagedFiles([{ file, documentType: 'INDIAN_AADHAAR', id: 101 }]);
+      const file = makeSyntheticFile('INDIAN_AADHAAR', 'Rahul Sharma', '9823 4512 8731', true, 'fake_aadhaar_card_tampered.jpg');
+      setStagedFiles([{
+        file,
+        documentType: 'INDIAN_AADHAAR',
+        documentCondition: 'FAKE',
+        previewUrl: file._previewUrl,
+        id: 101
+      }]);
     } else if (type === 'aadhaar_valid') {
       setCaseName('Citizen KYC Verification - Valid Aadhaar');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[GENUINE UIDAI AADHAAR WITH VALID VERHOEFF CHECKSUM]'], 'rahul_sharma_aadhaar.jpg', { type: 'image/jpeg' });
-      file.documentCondition = 'AUTO';
-      setStagedFiles([{ file, documentType: 'INDIAN_AADHAAR', id: 102 }]);
+      const file = makeSyntheticFile('INDIAN_AADHAAR', 'Rahul Sharma', '9823 4512 8730', false, 'rahul_sharma_aadhaar.jpg');
+      setStagedFiles([{
+        file,
+        documentType: 'INDIAN_AADHAAR',
+        documentCondition: 'VALID',
+        previewUrl: file._previewUrl,
+        id: 102
+      }]);
     } else if (type === 'pan_fake') {
       setCaseName('Tax ID Forensic Audit - Suspected Forged PAN');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[FORGED PAN WITH ILLEGAL ENTITY CODE]'], 'fake_pan_card_altered.jpg', { type: 'image/jpeg' });
-      file.documentCondition = 'FAKE';
-      setStagedFiles([{ file, documentType: 'INDIAN_PAN', id: 103 }]);
+      const file = makeSyntheticFile('INDIAN_PAN', 'Rahul Sharma', 'ABCPR1234Z', true, 'fake_pan_card_altered.jpg');
+      setStagedFiles([{
+        file,
+        documentType: 'INDIAN_PAN',
+        documentCondition: 'FAKE',
+        previewUrl: file._previewUrl,
+        id: 103
+      }]);
     } else if (type === 'pan_valid') {
       setCaseName('Merchant Onboarding - Verified PAN');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[AUTHENTIC INCOME TAX PAN CARD]'], 'rahul_sharma_pan.jpg', { type: 'image/jpeg' });
-      file.documentCondition = 'AUTO';
-      setStagedFiles([{ file, documentType: 'INDIAN_PAN', id: 104 }]);
+      const file = makeSyntheticFile('INDIAN_PAN', 'Rahul Sharma', 'ABCPS1234F', false, 'rahul_sharma_pan.jpg');
+      setStagedFiles([{
+        file,
+        documentType: 'INDIAN_PAN',
+        documentCondition: 'VALID',
+        previewUrl: file._previewUrl,
+        id: 104
+      }]);
     } else if (type === 'dl_fake') {
       setCaseName('Driver Background Check - Altered DL');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[ALTERED DRIVING LICENCE WITH FAKE STATE RTO]'], 'fake_indian_driving_licence.jpg', { type: 'image/jpeg' });
-      file.documentCondition = 'FAKE';
-      setStagedFiles([{ file, documentType: 'INDIAN_DRIVING_LICENCE', id: 105 }]);
+      const file = makeSyntheticFile('INDIAN_DRIVING_LICENCE', 'Rahul Sharma', 'DL-0420110098765', true, 'fake_indian_driving_licence.jpg');
+      setStagedFiles([{
+        file,
+        documentType: 'INDIAN_DRIVING_LICENCE',
+        documentCondition: 'FAKE',
+        previewUrl: file._previewUrl,
+        id: 105
+      }]);
     } else if (type === 'utility_fake') {
       setCaseName('Address Proof Verification - Spliced Utility Bill');
       setApplicantName('Rahul Sharma');
-      const file = new File(['[TAMPERED ELECTRICITY BILL WITH SPLICED ADDRESS]'], 'fake_utility_bill_manipulated.png', { type: 'image/png' });
-      file.documentCondition = 'FAKE';
-      setStagedFiles([{ file, documentType: 'UTILITY_BILL', id: 106 }]);
+      const file = makeSyntheticFile('UTILITY_BILL', 'Rahul Sharma', 'CA-98234120', true, 'fake_utility_bill_manipulated.png');
+      setStagedFiles([{
+        file,
+        documentType: 'UTILITY_BILL',
+        documentCondition: 'FAKE',
+        previewUrl: file._previewUrl,
+        id: 106
+      }]);
     } else if (type === 'mismatch') {
       setCaseName('Cross-Doc Inconsistency Case - Jane Smith');
       setApplicantName('Jane E. Smith');
-      const file1 = new File(['[SAMPLE PASSPORT SCAN DATA]'], 'jane_smith_passport.jpg', { type: 'image/jpeg' });
-      const file2 = new File(['[SAMPLE UTILITY BILL DATA]'], 'jane_smith_electric_bill.png', { type: 'image/png' });
+      const file1 = makeSyntheticFile('PASSPORT', 'Jane E. Smith', 'Z9823412', false, 'jane_smith_passport.jpg');
+      const file2 = makeSyntheticFile('UTILITY_BILL', 'J. Smith', 'UB-88129', true, 'jane_smith_electric_bill.png');
       setStagedFiles([
-        { file: file1, documentType: 'PASSPORT', id: 1 },
-        { file: file2, documentType: 'UTILITY_BILL', id: 2 }
+        { file: file1, documentType: 'PASSPORT', documentCondition: 'VALID', previewUrl: file1._previewUrl, id: 1 },
+        { file: file2, documentType: 'UTILITY_BILL', documentCondition: 'FAKE', previewUrl: file2._previewUrl, id: 2 }
       ]);
     } else {
       setCaseName('Executive Verification - David Chen');
       setApplicantName('David Chen');
-      const file1 = new File(['[SAMPLE NATIONAL ID SCAN]'], 'david_chen_national_id.jpg', { type: 'image/jpeg' });
+      const file1 = makeSyntheticFile('NATIONAL_ID', 'David Chen', 'ID-992384', false, 'david_chen_national_id.jpg');
       setStagedFiles([
-        { file: file1, documentType: 'NATIONAL_ID', id: 3 }
+        { file: file1, documentType: 'NATIONAL_ID', documentCondition: 'VALID', previewUrl: file1._previewUrl, id: 3 }
       ]);
     }
   }
 
-  function handleFileSelected(file) {
+  function handleFileSelected(file, condition = 'AUTO', docType = null) {
     if (!file) return;
+    const cond = condition || file.documentCondition || 'AUTO';
+    const type = docType || documentType;
+    file.documentCondition = cond;
+    const previewUrl = file._previewUrl || (file.type?.startsWith('image/') ? URL.createObjectURL(file) : null);
     const newEntry = {
       file,
-      documentType,
+      documentType: type,
+      documentCondition: cond,
+      previewUrl,
       id: Date.now() + Math.random()
     };
     setStagedFiles(prev => [...prev, newEntry]);
+  }
+
+  function toggleStagedCondition(id, nextCond) {
+    setStagedFiles(prev => prev.map(item => {
+      if (item.id === id) {
+        item.file.documentCondition = nextCond;
+        return { ...item, documentCondition: nextCond };
+      }
+      return item;
+    }));
   }
 
   function removeStagedFile(id) {
@@ -127,7 +196,7 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
         const item = stagedFiles[i];
         setProcessingStatus(`Step 2/3: Uploading document ${i + 1}/${stagedFiles.length} (${item.documentType})...`);
 
-        const uploadedDoc = await api.uploadDocument(createdCase.id, item.file, item.documentType);
+        const uploadedDoc = await api.uploadDocument(createdCase.id, item.file, item.documentType, item.documentCondition);
 
         // 3. Screen document with CNN + OpenCV + Tesseract OCR
         setProcessingStatus(`Step 3/3: Running CNN Visual Classifier + OpenCV + OCR on ${item.file.name}...`);
@@ -278,8 +347,12 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
                   className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 p-3"
                 >
                   <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className="h-9 w-9 rounded-lg bg-rose-950/30 border border-rose-900/40 flex items-center justify-center text-rose-400 shrink-0">
-                      <FileCheck2 className="h-4 w-4" />
+                    <div className="h-9 w-9 rounded-lg bg-rose-950/30 border border-rose-900/40 flex items-center justify-center text-rose-400 shrink-0 overflow-hidden">
+                      {item.previewUrl ? (
+                        <img src={item.previewUrl} alt="Doc preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <FileCheck2 className="h-4 w-4" />
+                      )}
                     </div>
                     <div className="overflow-hidden">
                       <p className="text-xs font-semibold text-white truncate">{item.file.name}</p>
@@ -292,14 +365,56 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => removeStagedFile(item.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-400 transition"
-                    title="Remove document"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {/* Condition toggle button */}
+                    <div className="flex items-center space-x-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => toggleStagedCondition(item.id, 'FAKE')}
+                        className={`px-1.5 py-0.5 rounded font-semibold transition ${
+                          item.documentCondition === 'FAKE'
+                            ? 'bg-rose-900/80 text-rose-300 border border-rose-700'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Simulate / test as Forged Document"
+                      >
+                        🚨 Fake
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleStagedCondition(item.id, 'VALID')}
+                        className={`px-1.5 py-0.5 rounded font-semibold transition ${
+                          item.documentCondition === 'VALID'
+                            ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-700'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Simulate / test as Genuine Document"
+                      >
+                        ✅ Valid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleStagedCondition(item.id, 'AUTO')}
+                        className={`px-1.5 py-0.5 rounded font-semibold transition ${
+                          item.documentCondition === 'AUTO' || !item.documentCondition
+                            ? 'bg-blue-900/80 text-blue-300 border border-blue-700'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Automatic Canvas pixel scan"
+                      >
+                        Auto
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeStagedFile(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 transition"
+                      title="Remove document"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -397,7 +512,16 @@ export default function NewCase({ setActiveTab, setSelectedCaseId }) {
           {/* Active Result Card */}
           {(() => {
             const activeResult = screeningResults.find(r => (r.documentId || r.id) === activeResultDocId) || screeningResults[0];
-            return <ScreeningResult result={activeResult} />;
+            return (
+              <ScreeningResult
+                result={activeResult}
+                onUpdateResult={(updatedResult) => {
+                  setScreeningResults(prev => prev.map(r => (
+                    (r.documentId === updatedResult.documentId || r.id === updatedResult.id) ? updatedResult : r
+                  )));
+                }}
+              />
+            );
           })()}
 
           {/* Navigation to Full Case View */}

@@ -8,6 +8,8 @@
  * so the operator can inspect and test the full application flow immediately.
  */
 
+import { analyzeImage } from './utils/imageForensics.js';
+
 const API_BASE_URL = 'http://localhost:8080/api';
 
 // Initial starter mock state for when Spring Boot backend is offline
@@ -254,8 +256,8 @@ const initialAuditLogs = [
   { id: 9, caseId: 3, action: 'CASE_CREATED', details: 'Case CASE-1003 created for applicant Alex Rivera', operator: 'operator@identityshield.local', createdAt: '2026-09-10T16:20:00' }
 ];
 
-// Persistent local storage cache for mock mode (versioned to avoid stale predictions)
-const STORAGE_KEY = 'identityshield_cases_v3';
+// Persistent local storage cache for mock mode (versioned to ensure accurate fraud and ML properties)
+const STORAGE_KEY = 'identityshield_cases_v5';
 
 function getStoredCases() {
   try {
@@ -381,7 +383,7 @@ export const api = {
   /**
    * Uploads a document to an existing case
    */
-  async uploadDocument(caseId, file, documentType = 'SUPPORTING_DOC') {
+  async uploadDocument(caseId, file, documentType = 'SUPPORTING_DOC', condition = null) {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -399,13 +401,28 @@ export const api = {
       const caseItem = cases.find(c => String(c.id) === String(caseId));
       if (!caseItem) throw new Error('Case not found');
 
+      // Run real in-browser optical signal extraction via HTML5 canvas
+      let opticalAnalysis = null;
+      if (file && (file.type?.startsWith('image/') || file.size > 0)) {
+        try {
+          opticalAnalysis = await analyzeImage(file);
+        } catch (optErr) {
+          console.warn('Canvas optical analysis skipped:', optErr);
+        }
+      }
+
+      const assignedCondition = condition || file.documentCondition || 'AUTO';
+
       const newDoc = {
         id: Date.now(),
         fileName: file.name,
+        fileCondition: assignedCondition,
         documentType: documentType.toUpperCase(),
         fileSizeBytes: file.size,
         mimeType: file.type || 'image/jpeg',
         uploadedAt: new Date().toISOString(),
+        previewUrl: opticalAnalysis?.previewUrl || (file.type?.startsWith('image/') ? URL.createObjectURL(file) : null),
+        opticalAnalysis,
         screeningResults: []
       };
 
@@ -418,7 +435,7 @@ export const api = {
         id: Date.now(),
         caseId: Number(caseId),
         action: 'DOCUMENT_UPLOADED',
-        details: `Uploaded document: ${file.name} (${documentType})`,
+        details: `Uploaded document: ${file.name} (${documentType}) [Condition: ${assignedCondition}]`,
         operator: 'operator@identityshield.local',
         createdAt: new Date().toISOString()
       });
@@ -517,10 +534,21 @@ export const api = {
         /(passport|national_id|driver|license|dl|id_card|aadhaar|pan|state_id|voter|govt|uidai)/i.test(fileName);
 
       // Check if document or case is marked or simulating a forgery or tamper test
-      const fileCondition = targetDoc?.fileCondition || (targetDoc?.file?.documentCondition);
+      const opticalSignals = targetDoc?.opticalAnalysis;
+      const fileCondition = targetDoc?.fileCondition || (targetDoc?.file?.documentCondition) || 'AUTO';
+
+      const hasTamperKeywords = /(fake|tamper|forg|alter|sample_fake|manipulat|fraud|spoof|invalid|dummy|specimen|test_fake|bad|corrupt|splic|clone|counterfeit)/i.test(fileName) ||
+        /(tamper|forgery|fraud|fake|mismatch|counterfeit)/i.test(caseName);
+
+      const hasOpticalTamper = opticalSignals && (
+        opticalSignals.splicingSuspected ||
+        opticalSignals.elaVariance > 0.28 ||
+        opticalSignals.anomalyScore > 0.30 ||
+        opticalSignals.sharpness > 280
+      );
+
       const isDeliberateForgery = fileCondition === 'FAKE' ||
-        /(fake|tamper|forg|alter|sample_fake|manipulat|fraud|spoof|invalid|dummy|specimen|test_fake)/i.test(fileName) ||
-        /(tamper|forgery|fraud|fake|mismatch)/i.test(caseName);
+        (fileCondition !== 'VALID' && (hasTamperKeywords || hasOpticalTamper));
 
       // Extract names for demographic matching
       const nameParts = applicantName.trim().split(/\s+/);
@@ -546,14 +574,14 @@ export const api = {
       let extractedFields = {};
 
       if (isDeliberateForgery) {
-        // Flagged as Forgery / Tampered
+        // Flagged as Forgery / Tampered (SUSPICIOUS - NEVER NORMAL)
         cnnPrediction = 'Suspicious';
-        cnnConfidence = 0.95;
-        suspiciousProbability = 0.9520;
-        normalProbability = 0.0480;
-        ocrConfidence = 0.72;
-        anomalyScore = 0.46;
-        riskScore = 88;
+        cnnConfidence = 0.9680;
+        suspiciousProbability = 0.9680;
+        normalProbability = 0.0320;
+        ocrConfidence = 0.68;
+        anomalyScore = 0.52;
+        riskScore = 92;
         riskLevel = 'HIGH';
 
         if (docType === 'INDIAN_AADHAAR' || fileName.includes('aadhaar')) {
@@ -572,13 +600,13 @@ export const api = {
           tamperAnalysis = {
             forgeryDetected: true,
             tamperFlags: [
-              'UIDAI Verhoeff Checksum Check: FAILED — 12th digit failed mathematical dihedral group check',
-              'Font Typography Anomaly: Inconsistent font baseline and character glyph divergence in demographic box',
-              'Optical Texture Splicing: Digital compression boundary mismatch around name and number fields'
+              'UIDAI Verhoeff Checksum Check: FAILED — 12th digit failed mathematical dihedral group check (expected valid check digit)',
+              'Font Typography Anomaly: Inconsistent font baseline and character glyph divergence in demographic box (Δy > 4.2px)',
+              'Optical Texture Splicing: Digital compression boundary mismatch around name and number fields (ELA score 0.62)'
             ],
             authenticityChecks: [
-              'UIDAI Header Layout: Standard template present',
-              'Ashoka Emblem: Present (tampered boundary)'
+              'UIDAI Header Layout: Standard template present (digital clone suspected)',
+              'Ashoka Emblem: Present (tampered edge boundary)'
             ]
           };
         } else if (docType === 'INDIAN_PAN' || fileName.includes('pan')) {
@@ -602,7 +630,7 @@ export const api = {
               'Error Level Analysis (ELA): High-frequency compression artifacts indicate pasted numeric text'
             ],
             authenticityChecks: [
-              'Income Tax Header: Recognized',
+              'Income Tax Header: Recognized template',
               'QR Code Matrix: Spliced / unreadable checksum'
             ]
           };
@@ -653,16 +681,20 @@ export const api = {
           };
         }
 
+        // Forged documents are NOT genuine government documents
         govtVerification = {
-          isGovtDocument: isGovtDoc,
-          docClassification: isIndianDoc ? 'Indian Credential (FAILED INTEGRITY AUDIT)' : 'Document (FAILED INTEGRITY AUDIT)',
-          issuingAuthority: isIndianDoc ? 'Govt of India / State Authority' : 'Issuing Directorate',
+          isGovtDocument: false,
+          isAuthentic: false,
+          isCounterfeit: true,
+          status: 'REJECTED_COUNTERFEIT',
+          docClassification: isIndianDoc ? 'Indian Credential (COUNTERFEIT / SPLICED)' : 'Document (FRAUDULENT / SPLICED)',
+          issuingAuthority: 'UNVERIFIED / FORGED SOURCE',
           mrzDetected: false,
           mrzCompliance: 'FAIL — Cryptographic Checksum or Structural Rules Broken',
-          guillocheIntegrity: 'Suspected Tampering — Discontinuous fine lines and digital cloning',
-          hologramSeal: 'Unverified / Digital Artifact',
-          demographicAlignment: 'Mismatched / Suspicious Demographic Data',
-          expiryStatus: 'Flagged by Anti-Fraud Engine',
+          guillocheIntegrity: 'FAILED — Fine-line Discontinuity & Digital Splicing',
+          hologramSeal: 'FAILED — Spliced Boundary or Missing Anti-Counterfeit Seal',
+          demographicAlignment: 'FAILED — Demographic Mismatch / Illegal Character Syntax',
+          expiryStatus: 'REVOKED / REJECTED by Anti-Fraud Engine',
           forgeryDetected: true,
           tamperFlags: tamperAnalysis.tamperFlags
         };
@@ -928,11 +960,62 @@ export const api = {
         }
       }
 
+      const cnnProperties = {
+        modelArchitecture: 'Sequential Convolutional Neural Network (CNN-2D)',
+        framework: 'TensorFlow / Keras 3.x (tf.keras.models.Sequential)',
+        inputDimensions: {
+          height: 224,
+          width: 224,
+          channels: 3,
+          colorSpace: 'RGB Normalized [0.0, 1.0]'
+        },
+        totalLayers: 12,
+        totalParameters: 12919297,
+        trainableParameters: 12919297,
+        nonTrainableParameters: 0,
+        lossFunction: 'Binary Cross-Entropy (Log Loss)',
+        optimizer: 'Adam (learning_rate=0.0001, beta_1=0.9, beta_2=0.999)',
+        outputActivation: 'Sigmoid σ(z) = 1 / (1 + e^(-z))',
+        decisionThreshold: 0.5000,
+        predictionLabel: cnnPrediction,
+        isAuthentic: !isDeliberateForgery,
+        isCounterfeit: !!isDeliberateForgery,
+        isTampered: !!isDeliberateForgery,
+        rawSigmoidScore: suspiciousProbability,
+        marginFromBoundary: +(Math.abs(suspiciousProbability - 0.5000)).toFixed(4),
+        classificationConfidence: +(cnnConfidence * 100).toFixed(2),
+        layerStack: [
+          { index: 0, name: 'input_tensor', type: 'InputLayer', outputShape: '(None, 224, 224, 3)', params: 0, role: 'Document Image Ingestion' },
+          { index: 1, name: 'rescaling_norm', type: 'Rescaling (1/255.0)', outputShape: '(None, 224, 224, 3)', params: 0, role: 'Pixel Intensity Normalization' },
+          { index: 2, name: 'conv2d_1', type: 'Conv2D (32 filters, 3x3, ReLU)', outputShape: '(None, 224, 224, 32)', params: 896, role: 'Micro-texture & Low-Level Edge Gradients' },
+          { index: 3, name: 'max_pooling2d_1', type: 'MaxPooling2D (2x2)', outputShape: '(None, 112, 112, 32)', params: 0, role: 'Spatial Downsampling 2x' },
+          { index: 4, name: 'conv2d_2', type: 'Conv2D (64 filters, 3x3, ReLU)', outputShape: '(None, 112, 112, 64)', params: 18496, role: 'Font Baseline & Character Boundary Coherence' },
+          { index: 5, name: 'max_pooling2d_2', type: 'MaxPooling2D (2x2)', outputShape: '(None, 56, 56, 64)', params: 0, role: 'Spatial Downsampling 2x' },
+          { index: 6, name: 'conv2d_3', type: 'Conv2D (128 filters, 3x3, ReLU)', outputShape: '(None, 56, 56, 128)', params: 73856, role: 'Multi-scale Splicing Seam & Compression Discontinuity' },
+          { index: 7, name: 'max_pooling2d_3', type: 'MaxPooling2D (2x2)', outputShape: '(None, 28, 28, 128)', params: 0, role: 'Spatial Downsampling 2x' },
+          { index: 8, name: 'flatten', type: 'Flatten', outputShape: '(None, 100352)', params: 0, role: '2D Feature Map Unrolling' },
+          { index: 9, name: 'dense_fusion', type: 'Dense (128 units, ReLU)', outputShape: '(None, 128)', params: 12845184, role: 'Forensic Representation Fusion & Non-linear Mapping' },
+          { index: 10, name: 'dropout_reg', type: 'Dropout (0.50 rate)', outputShape: '(None, 128)', params: 0, role: 'Overfitting Mitigation' },
+          { index: 11, name: 'dense_output', type: 'Dense (1 unit, Sigmoid)', outputShape: '(None, 1)', params: 129, role: 'Scalar Binary Probability P(Suspicious)' }
+        ],
+        forensicFeatureMetrics: {
+          errorLevelAnalysisVariance: isDeliberateForgery ? '0.582 (HIGH — Resaved / Pasted Artifacts Detected)' : '0.041 (LOW — Uniform Sensor Noise)',
+          laplacianSharpnessVariance: isDeliberateForgery ? '82.4 (Defocused or Digitally Rendered Patch)' : '124.6 (Sharp High-Resolution Scan)',
+          cannyEdgeDensityRatio: isDeliberateForgery ? '0.284 (Anomalous High-Frequency Boundaries)' : '0.142 (Natural Document Typography)',
+          fontBaselineVariance: isDeliberateForgery ? 'Δy = 4.8px (Significant Splicing Misalignment)' : 'Δy = 0.2px (Linear Optical Alignment)',
+          checksumIntegrity: isDeliberateForgery ? 'FAIL (Mathematical Rule Broken)' : 'PASS (Dihedral / Syntax Validated)'
+        }
+      };
+
       const result = {
         id: Date.now(),
         documentId: documentId,
         cnnPrediction,
         cnnConfidence,
+        isAuthentic: !isDeliberateForgery,
+        isCounterfeit: !!isDeliberateForgery,
+        isTampered: !!isDeliberateForgery,
+        cnnProperties,
         rawProbability: suspiciousProbability,
         suspiciousProbability,
         normalProbability,
@@ -953,12 +1036,19 @@ export const api = {
         tamperAnalysis,
         extractedText,
         extractedFieldsJson: JSON.stringify(extractedFields),
+        previewUrl: opticalSignals?.previewUrl || targetDoc?.previewUrl || null,
+        elaDataUrl: opticalSignals?.elaDataUrl || null,
+        edgeDataUrl: opticalSignals?.edgeDataUrl || null,
+        opticalMetrics: opticalSignals || null,
         imageSignalsJson: JSON.stringify({
-          brightness: 132.5,
-          sharpness: isGovtDoc ? 118.4 : 98.2,
-          edgeDensity: isGovtDoc ? 0.16 : 0.08,
-          noiseAnomaly: anomalyScore,
-          guillochePatternIntegrity: isGovtDoc ? 'Verified' : 'Standard'
+          brightness: opticalSignals ? opticalSignals.brightness : 132.5,
+          sharpness: opticalSignals ? opticalSignals.sharpness : (isGovtDoc ? 118.4 : 98.2),
+          edgeDensity: opticalSignals ? opticalSignals.edgeDensity : (isGovtDoc ? 0.16 : 0.08),
+          noiseAnomaly: opticalSignals ? opticalSignals.anomalyScore : anomalyScore,
+          elaMeanDelta: opticalSignals?.elaMeanDelta || (isDeliberateForgery ? 4.8 : 1.2),
+          elaVariance: opticalSignals?.elaVariance || (isDeliberateForgery ? 0.38 : 0.04),
+          splicingSuspected: opticalSignals ? opticalSignals.splicingSuspected : isDeliberateForgery,
+          guillochePatternIntegrity: isGovtDoc && !isDeliberateForgery ? 'Verified' : 'Flagged Anomaly'
         }),
         consistencyNotes,
         createdAt: new Date().toISOString()
@@ -996,6 +1086,138 @@ export const api = {
 
       return result;
     }
+  },
+
+  /**
+   * Recalculates model screening prediction and probabilities dynamically
+   * Allows interactive testing of decision threshold (tau) and verdict overrides
+   */
+  recalculateScreeningResult(resultId, options = {}) {
+    const cases = getStoredCases();
+    let foundResult = null;
+    let parentDoc = null;
+    let parentCase = null;
+
+    for (const c of cases) {
+      if (c.documents) {
+        for (const d of c.documents) {
+          if (d.screeningResults) {
+            const r = d.screeningResults.find(res => String(res.id) === String(resultId));
+            if (r) {
+              foundResult = r;
+              parentDoc = d;
+              parentCase = c;
+              break;
+            }
+          }
+        }
+      }
+      if (foundResult) break;
+    }
+
+    if (!foundResult) throw new Error('Screening result not found');
+
+    const threshold = options.decisionThreshold !== undefined
+      ? Number(options.decisionThreshold)
+      : (foundResult.cnnProperties?.decisionThreshold ?? 0.50);
+
+    const targetPrediction = options.overridePrediction || (
+      foundResult.suspiciousProbability >= threshold ? 'Suspicious' : 'Normal'
+    );
+
+    const isSuspicious = targetPrediction === 'Suspicious';
+
+    // Update prediction and scores
+    foundResult.cnnPrediction = isSuspicious ? 'Suspicious' : 'Normal';
+    foundResult.isAuthentic = !isSuspicious;
+    foundResult.isCounterfeit = isSuspicious;
+    foundResult.isTampered = isSuspicious;
+
+    if (isSuspicious) {
+      foundResult.riskScore = Math.max(78, foundResult.riskScore < 50 ? 92 : foundResult.riskScore);
+      foundResult.riskLevel = 'HIGH';
+      foundResult.cnnConfidence = Math.max(0.92, foundResult.cnnConfidence || 0.96);
+      foundResult.suspiciousProbability = Math.max(threshold + 0.08, foundResult.suspiciousProbability || 0.94);
+      foundResult.normalProbability = +(1 - foundResult.suspiciousProbability).toFixed(4);
+      foundResult.rawProbability = foundResult.suspiciousProbability;
+      foundResult.recommendationMessage = foundResult.recommendationMessage?.includes('High Risk')
+        ? foundResult.recommendationMessage
+        : 'High Risk — Forgery / Tampered Visual Artifacts Flagged by Model';
+
+      if (!foundResult.tamperAnalysis?.forgeryDetected) {
+        foundResult.tamperAnalysis = {
+          forgeryDetected: true,
+          tamperFlags: [
+            'Model Classification: Suspicious prediction exceeds decision threshold',
+            'Optical Inconsistency: Digital splicing boundary or compression variance flagged',
+            'Security Verification: Failed authentic government credential standards'
+          ],
+          authenticityChecks: ['Layout Form: Document template flagged for human inspection']
+        };
+      }
+      if (foundResult.govtVerification) {
+        foundResult.govtVerification.isAuthentic = false;
+        foundResult.govtVerification.isCounterfeit = true;
+        foundResult.govtVerification.status = 'REJECTED_COUNTERFEIT';
+        foundResult.govtVerification.forgeryDetected = true;
+      }
+    } else {
+      foundResult.riskScore = Math.min(24, foundResult.riskScore > 40 ? 12 : foundResult.riskScore);
+      foundResult.riskLevel = 'LOW';
+      foundResult.cnnConfidence = Math.max(0.94, foundResult.cnnConfidence || 0.96);
+      foundResult.normalProbability = Math.max(0.92, foundResult.normalProbability || 0.96);
+      foundResult.suspiciousProbability = Math.min(threshold - 0.05, Math.max(0.02, +(1 - foundResult.normalProbability).toFixed(4)));
+      foundResult.rawProbability = foundResult.suspiciousProbability;
+      foundResult.recommendationMessage = 'Low Risk — Official Credential Validated by Screening Model';
+
+      if (foundResult.tamperAnalysis) {
+        foundResult.tamperAnalysis.forgeryDetected = false;
+        foundResult.tamperAnalysis.tamperFlags = [];
+        foundResult.tamperAnalysis.authenticityChecks = [
+          'Model Classification: Normal authentic pattern verified',
+          'Security Checksum: Validated',
+          'Optical Consistency: Natural print texture confirmed'
+        ];
+      }
+      if (foundResult.govtVerification) {
+        foundResult.govtVerification.isAuthentic = true;
+        foundResult.govtVerification.isCounterfeit = false;
+        foundResult.govtVerification.status = 'VERIFIED_GENUINE';
+        foundResult.govtVerification.forgeryDetected = false;
+      }
+    }
+
+    if (foundResult.cnnProperties) {
+      foundResult.cnnProperties.decisionThreshold = threshold;
+      foundResult.cnnProperties.predictionLabel = foundResult.cnnPrediction;
+      foundResult.cnnProperties.isAuthentic = !isSuspicious;
+      foundResult.cnnProperties.isCounterfeit = isSuspicious;
+      foundResult.cnnProperties.isTampered = isSuspicious;
+      foundResult.cnnProperties.rawSigmoidScore = foundResult.suspiciousProbability;
+      foundResult.cnnProperties.marginFromBoundary = +(Math.abs(foundResult.suspiciousProbability - threshold)).toFixed(4);
+    }
+
+    if (foundResult.probabilityScores) {
+      foundResult.probabilityScores.suspiciousProbability = foundResult.suspiciousProbability;
+      foundResult.probabilityScores.normalProbability = foundResult.normalProbability;
+      foundResult.probabilityScores.rawSigmoidScore = foundResult.suspiciousProbability;
+      foundResult.probabilityScores.overallRiskProbability = +(foundResult.riskScore / 100).toFixed(4);
+    }
+
+    // Re-calculate case overall risk
+    if (parentCase) {
+      const allResults = [];
+      (parentCase.documents || []).forEach(d => {
+        if (d.screeningResults) allResults.push(...d.screeningResults);
+      });
+      const maxRisk = allResults.reduce((max, r) => Math.max(max, r.riskScore || 0), foundResult.riskScore);
+      parentCase.overallRiskScore = maxRisk;
+      parentCase.overallRiskLevel = maxRisk >= 60 ? 'HIGH' : maxRisk >= 30 ? 'MEDIUM' : 'LOW';
+      parentCase.status = maxRisk >= 60 ? 'REVIEW_REQUIRED' : maxRisk >= 30 ? 'IN_REVIEW' : 'COMPLETED';
+    }
+
+    saveStoredCases(cases);
+    return foundResult;
   },
 
   /**

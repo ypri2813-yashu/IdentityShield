@@ -240,7 +240,16 @@ export default function Cases({ selectedCaseId, setSelectedCaseId }) {
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Document Forensics &amp; Signal Breakdown:
               </p>
-              <ScreeningResult result={activeDocResult} />
+              <ScreeningResult
+                result={activeDocResult}
+                onUpdateResult={(updatedResult) => {
+                  setActiveDocResult(updatedResult);
+                  if (detailedCase) {
+                    loadDetailedCase(detailedCase.id);
+                    loadCases();
+                  }
+                }}
+              />
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-slate-400 text-xs">

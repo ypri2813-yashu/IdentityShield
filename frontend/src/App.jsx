@@ -6,6 +6,7 @@ import NewCase from './components/NewCase';
 import Cases from './components/Cases';
 import Reports from './components/Reports';
 import AuditLogs from './components/AuditLogs';
+import JavaBackendGuide from './components/JavaBackendGuide';
 import { api } from './api';
 
 export default function App() {
@@ -28,7 +29,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       {/* Top Navbar */}
-      <Navbar backendStatus={backendStatus} onRefreshBackend={checkHealth} />
+      <Navbar
+        backendStatus={backendStatus}
+        onRefreshBackend={checkHealth}
+        onOpenJavaGuide={() => setActiveTab('java-backend')}
+      />
 
       {/* Main Layout Body */}
       <div className="flex-1 flex overflow-hidden">
@@ -62,6 +67,8 @@ export default function App() {
             {activeTab === 'reports' && <Reports />}
 
             {activeTab === 'audit-logs' && <AuditLogs />}
+
+            {activeTab === 'java-backend' && <JavaBackendGuide />}
           </div>
         </main>
       </div>
@@ -93,10 +100,10 @@ export default function App() {
           Reports
         </button>
         <button
-          onClick={() => setActiveTab('audit-logs')}
-          className={`p-2 rounded-lg ${activeTab === 'audit-logs' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('java-backend')}
+          className={`p-2 rounded-lg ${activeTab === 'java-backend' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
-          Audit
+          Java ML
         </button>
       </div>
     </div>

@@ -19,12 +19,14 @@ public class RestTemplateConfig {
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setBufferRequestBody(false); // Enable streaming for large file uploads
+        // Keep buffering enabled (true) to ensure reliable multipart/form-data upload
+        // and avoid ProtocolException or Content-Length stream errors with Spring RestTemplate
+        requestFactory.setBufferRequestBody(true);
 
         return builder
                 .requestFactory(() -> requestFactory)
                 .setConnectTimeout(Duration.ofSeconds(10))
-                .setReadTimeout(Duration.ofSeconds(60)) // Allow sufficient time for CNN inference and OCR
+                .setReadTimeout(Duration.ofSeconds(60))
                 .build();
     }
 }

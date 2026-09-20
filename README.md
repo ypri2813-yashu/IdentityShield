@@ -169,12 +169,13 @@ Follow these steps in this exact sequence to run IdentityShield locally:
    python train_cnn.py --generate-sample-data --epochs 10
    ```
    *(Ensure `ml-service/model/document_cnn.keras` has been generated)*
-5. Return to `ml-service/` and start FastAPI:
+5. Return to `ml-service/` and start FastAPI (port 8001):
    ```bash
    cd ../ml-service
-   uvicorn main:app --reload --port 8000
+   uvicorn main:app --reload --port 8001
    ```
-   FastAPI will be active at: `http://localhost:8000` (Health check: `http://localhost:8000/health`)
+   FastAPI will be active at: `http://localhost:8001` (Health check: `http://localhost:8001/health`)
+   *Note: If the Python ML microservice is stopped or offline, the Java backend automatically uses its built-in Verhoeff Aadhaar & PAN validation fallback engine with zero downtime.*
 
 ### Step 3 — Java Spring Boot Backend
 

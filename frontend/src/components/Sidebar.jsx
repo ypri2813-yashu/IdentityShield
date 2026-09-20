@@ -6,7 +6,8 @@ import {
   BarChart3,
   ShieldCheck,
   FileCheck2,
-  Info
+  Info,
+  Code2
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
@@ -15,7 +16,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'new-case', label: 'New Case', icon: PlusCircle, badge: 'Active' },
     { id: 'cases', label: 'Cases', icon: FolderArchive },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'audit-logs', label: 'Audit Logs', icon: ShieldCheck }
+    { id: 'audit-logs', label: 'Audit Logs', icon: ShieldCheck },
+    { id: 'java-backend', label: 'Java ML Syntax', icon: Code2, badge: 'Easier' }
   ];
 
   return (

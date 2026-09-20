@@ -1,7 +1,7 @@
 import React from 'react';
-import { ShieldAlert, ShieldCheck, Cpu, HardDrive, RefreshCw, Radio } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Cpu, HardDrive, RefreshCw, Radio, Code2 } from 'lucide-react';
 
-export default function Navbar({ backendStatus, onRefreshBackend }) {
+export default function Navbar({ backendStatus, onRefreshBackend, onOpenJavaGuide }) {
   const isConnected = backendStatus?.isOnline;
 
   return (
@@ -23,7 +23,17 @@ export default function Navbar({ backendStatus, onRefreshBackend }) {
       </div>
 
       {/* Backend & Model Service Status indicators */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2.5">
+        {/* Quick Java Syntax Guide link */}
+        <button
+          onClick={onOpenJavaGuide}
+          className="hidden sm:flex items-center space-x-1.5 rounded-full border border-rose-500/30 bg-rose-950/20 px-3 py-1 text-xs text-rose-300 hover:text-white hover:border-rose-500/60 transition"
+          title="View Simplified Java ML Backend Syntax"
+        >
+          <Code2 className="h-3.5 w-3.5 text-rose-400" />
+          <span className="font-semibold">Java ML Syntax</span>
+        </button>
+
         {/* Backend Connectivity Badge */}
         <div className={`flex items-center space-x-2 rounded-full px-3 py-1 text-xs border ${
           isConnected
